@@ -1,0 +1,122 @@
+% MATLAB kodu
+a = arduino(); % Arduino baðlantýsýný kur
+
+% Pin tanýmlamalarý
+enA = 'D10';
+in1 = 'D9';
+in2 = 'D8';
+in3 = 'D7';
+in4 = 'D6';
+enB = 'D5';
+buzzer = 'D4';
+
+ir_R = 'A0';
+ir_F = 'A1';
+ir_L = 'A2';
+
+servoPin = 'A3';
+pump = 'A5';
+
+% Motor hýzý
+Speed = 190;
+
+% Servo motor için PWM frekansý
+writePWMDutyCycle(a, servoPin, 0.5); % Baþlangýç açýsý için
+
+% Pin modlarý
+configurePin(a, ir_R, 'AnalogInput');
+configurePin(a, ir_F, 'AnalogInput');
+configurePin(a, ir_L, 'AnalogInput');
+
+configurePin(a, enA, 'PWM');
+configurePin(a, enB, 'PWM');
+configurePin(a, in1, 'DigitalOutput');
+configurePin(a, in2, 'DigitalOutput');
+configurePin(a, in3, 'DigitalOutput');
+configurePin(a, in4, 'DigitalOutput');
+configurePin(a, buzzer, 'DigitalOutput');
+configurePin(a, pump, 'DigitalOutput');
+
+% Servo motor hareketi baþlangýcý
+for angle = 90:5:140
+    servoPulse(a, servoPin, angle);
+end
+for angle = 140:-5:40
+    servoPulse(a, servoPin, angle);
+end
+for angle = 40:5:95
+    servoPulse(a, servoPin, angle);
+end
+
+% Motor hýzlarýný ayarla
+writePWMDutyCycle(a, enA, Speed / 255);
+writePWMDutyCycle(a, enB, Speed / 255);
+
+pause(0.5);
+
+% Ana döngü
+while true
+    s1 = readVoltage(a, ir_R); % Sað sensör
+    s2 = readVoltage(a, ir_F); % Orta sensör
+    s3 = readVoltage(a, ir_L); % Sol sensör
+    
+    disp([s1, s2, s3]); % Sensör deðerlerini yazdýr
+    pause(0.05);
+
+    % Otomatik kontrol
+    if s1 < 0.8
+        Stop(a, in1, in2, in3, in4);
+        writeDigitalPin(a, pump, 1);
+
+        for angle = 90:-3:40
+            servoPulse(a, servoPin, angle);
+        end
+        for angle = 40:3:90
+            servoPulse(a, servoPin, angle);
+        end
+
+    elseif s2 < 0.8
+        Stop(a, in1, in2, in3, in4);
+        writeDigitalPin(a, pump, 1);
+
+        for angle = 90:3:140
+            servoPulse(a, servoPin, angle);
+        end
+        for angle = 140:-3:40
+            servoPulse(a, servoPin, angle);
+        end
+        for angle = 40:3:90
+            servoPulse(a, servoPin, angle);
+        end
+
+    elseif s3 < 0.8
+        Stop(a, in1, in2, in3, in4);
+        writeDigitalPin(a, pump, 1);
+
+        for angle = 90:3:140
+            servoPulse(a, servoPin, angle);
+        end
+        for angle = 140:-3:90
+            servoPulse(a, servoPin, angle);
+        end
+
+    else
+        writeDigitalPin(a, pump, 0);
+        Stop(a, in1, in2, in3, in4);
+    end
+    pause(0.01);
+end
+
+% Fonksiyonlar
+function servoPulse(a, pin, angle)
+    pwm = (angle * 11 + 500) / 1e6; % Mikro saniyeden saniyeye çevir
+    writePWMDutyCycle(a, pin, pwm);
+    pause(0.05);
+end
+
+function Stop(a, in1, in2, in3, in4)
+    writeDigitalPin(a, in1, 0);
+    writeDigitalPin(a, in2, 0);
+    writeDigitalPin(a, in3, 0);
+    writeDigitalPin(a, in4, 0);
+end
